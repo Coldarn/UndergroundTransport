@@ -1,0 +1,16 @@
+{
+	"name": "UndergroundTransport",
+	"version": "0.1.0",
+	"title": "Underground Transport",
+	"author": "Coldarn",
+	"dependencies": [
+		"base >= 2.0.2",
+		"space-age >= 2.0.2"
+	],
+	"description": "Provides loader-like ports to transfer items through an auto-routed, underground transportation network, designed to facilitate logistics on large space platforms.",
+	"factorio_version": "2.0",
+	"homepage": "https://github.com/Coldarn/UndergroundTransport",
+	"package": {
+		"git_publish_branch": "main"
+    }
+}
