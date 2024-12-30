@@ -9,13 +9,42 @@ function Util.startsWith(str, start)
 end
 
 -- Removes the given value from the table
-function Util.tableRemove(tbl, value)
+function Util.tableRemove(tbl, valueOrFunc)
+  local checkFn = valueOrFunc
+  if type(valueOrFunc) ~= 'function' then
+    checkFn = function(v) return v == valueOrFunc end
+  end
   for i, v in ipairs(tbl) do
-    if v == value then
+    if checkFn(v) then
       table.remove(tbl, i)
       return
     end
   end
+end
+
+-- Randomizes the order of the elements in the table in-place and returns it
+function Util.tableShuffle(tbl)
+  local tableSize = #tbl
+  if tableSize <= 1 then return tbl end
+  for i = tableSize, 2, -1 do
+    local j = math.random(i)
+    tbl[i], tbl[j] = tbl[j], tbl[i]
+  end
+  return tbl
+end
+
+-- Returns a shallow copy of the given table
+function Util.tableShallowCopy(tbl)
+  local outTable = {}
+  for k, v in pairs(tbl) do
+    outTable[k] = v
+  end
+  return outTable
+end
+
+-- Returns the orthogonal distance between the two given points
+function Util.manhattanDistance(pos1, pos2)
+  return math.abs(pos2.x - pos1.x) + math.abs(pos2.y - pos1.y)
 end
 
 -- Returns true if the given entity is an underground transport port
@@ -29,7 +58,7 @@ function Util.isInput(entity)
 end
 
 function Util.itemFilterToKey(filter)
-  return filter.name.."/"..filter.quality
+  return filter.name.."/"..(filter.quality.name and filter.quality.name or filter.quality)
 end
 
 function Util.itemFiltersEqual(filter1, filter2)

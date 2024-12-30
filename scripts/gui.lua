@@ -61,12 +61,12 @@ function GUI.openOutputPortGui(player, entity)
   local port = Network.getPort(entity)
   buttonContainer.add{ type="label",  caption='Left lane:', style="semibold_label" }
   GUI.chooseLeftButton = buttonContainer.add{ type="choose-elem-button", elem_type='item-with-quality' }
-  GUI.chooseLeftButton.elem_value = port.leftLane
+  GUI.chooseLeftButton.elem_value = port.leftLane.item
   GUI.bothButtonLeft = buttonContainer.add{ type="button", caption="Set both lanes" }
 
   buttonContainer.add{ type="label", caption='Right lane:', style="semibold_label" }
-  GUI.chooseRightButton = buttonContainer.add{ type="choose-elem-button", elem_type='item-with-quality', elem_value=port.rightLane }
-  GUI.chooseRightButton.elem_value = port.rightLane
+  GUI.chooseRightButton = buttonContainer.add{ type="choose-elem-button", elem_type='item-with-quality' }
+  GUI.chooseRightButton.elem_value = port.rightLane.item
   GUI.bothButtonRight = buttonContainer.add{ type="button", caption="Set both lanes" }
 
   GUI.updateButtonStates()

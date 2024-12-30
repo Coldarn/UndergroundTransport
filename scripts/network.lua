@@ -1,6 +1,31 @@
-local Network = {}
+local Network = {
+  -- Data model examples:
+  -- [surfaceName] = {
+  --   inputs = {
+  --    [unitNumber] = {
+  --      entity=entity,
+  --      leftLane={ item=item, buffer={}, bufferLength=10 },
+  --      rightLane={ item=item, buffer={}, bufferLength=10 },
+  --    },
+  --   },
+  --   outputs = {
+  --    [unitNumber] = {
+  --      entity=entity,
+  --      leftLane={ item=item, buffer={}, bufferLength=10 },
+  --      rightLane={ item=item, buffer={}, bufferLength=10 },
+  --    },
+  --   },
+  --   demands = {
+  --    [itemFilterKey] = {
+  --      { port=port1, lane=1 },
+  --      { port=port1, lane=2 },
+  --      lastIndex=#,
+  --    },
+  --   },
+  -- }
+}
 
-local MIN_BUFFER_LENGTH = 10
+local MIN_BUFFER_LENGTH = 100
 
 function Network.init()
   if not storage.networks then
@@ -9,22 +34,28 @@ function Network.init()
 end
 
 function Network.tick()
-  local recalcBuffers = not storage.nextRecalcTick or game.tick >= storage.nextRecalcTick
-  if recalcBuffers then
+  local recalcBufferLenghts = not storage.nextRecalcTick or game.tick >= storage.nextRecalcTick
+  if recalcBufferLenghts then
     storage.nextRecalcTick = game.tick + 600
   end
 
   for _, surface in pairs(game.surfaces) do
-    local network = storage.networks[surface.name]
+    local network = Network.get(surface.name)
     local supplies = {
-      -- [itemKey] = { {port=port1, lane=1}, {port=port1, lane=2} }
+      -- [itemFilterKey] = { {port=port1, lane=1}, {port=port1, lane=2} }
     }
 
-    for _, inPort in ipairs(network.inputs) do
+    -- Collect all inputs with items ready to deliver
+    for _, inPort in pairs(network.inputs) do
       local entity = inPort.entity
       for idx = 1, 2 do
         -- Check for items ready on each input port lane
-        local item = entity.get_transport_line(idx)
+        local lane = entity.get_transport_line(idx)
+        -- If there's room to insert an item at the end of the lane, it's not full yet
+        if lane.can_insert_at(lane.line_length - 0.25) then goto laneLoop end
+
+        -- [1] should be the last item on the lane
+        local item = lane[1]
         if not item then goto laneLoop end
 
         -- We have an iteam ready, now check if any outputs want it
@@ -32,56 +63,78 @@ function Network.tick()
         local demands = network.demands[itemKey]
         if not demands or #demands == 0 then goto laneLoop end
 
-        -- Store this input for later round-robin delivery
+        -- Store this input for delivery down below
         local inputs = supplies[itemKey]
         if not inputs then
           inputs = {}
           supplies[itemKey] = inputs
         end
-        table.insert(inputs, { port=inPort, lane=idx})
+        table.insert(inputs, { port=inPort, lane=idx })
 
         ::laneLoop::
       end
     end
 
-    if recalcBuffers then
-      for itemKey, outputs in network.demands do
-        if #outputs == 0 then
-          network.demands[itemKey] = nil
-        end
-      end
+    if recalcBufferLenghts then
+      -- TODO: Recalculate the buffer lengths for each output from the farthest input
     end
 
+    -- Deliver each input item to the next output buffer in the round-robin list
     for itemKey, inputs in pairs(supplies) do
       local demands = network.demands[itemKey]
 
-      local lastDemandIdx = demands.lastIndex
-      for i = 0, #demands - 1 do
-        demands.lastIndex = (i + lastDemandIdx) % #demands + 1
-        local outPort = demands[demands.lastIndex]
-        -- TODO: Choose an input and deliver the item to the output
-      end
-      -- local demandIndex = demands.lastIndex
-      -- if demandIndex >= #demands then demandIndex = 0 end
-      -- demandIndex = demandIndex + 1
-      -- demands.lastIndex = demandIndex
+      Util.tableShuffle(inputs)
+      local lastSupplyIdx = nil
 
-      -- local demand = demands[demandIndex]
-      -- local output = demand.entity
-      -- local lane = demand.lane
-      -- local item = output.get_transport_line(lane)
-      -- if item then
-      --   local inserted = output.insert_into_transport_line(lane, {name=item.name, count=1})
-      --   if inserted > 0 then
-      --     local removed = inputs[1].input.remove_item(inputs[1].lane, {name=item.name, count=1})
-      --     if removed > 0 then
-      --       -- Remove the input from the list if it's now empty
-      --       if inputs[1].input.get_item_count(inputs[1].lane) == 0 then
-      --         table.remove(inputs, 1)
-      --       end
-      --     end
-      --   end
-      -- end
+      for _ = 1, #demands do
+        local inputEntry = nil
+        if not demands[demands.lastIndex] then
+          demands.lastIndex = 1
+        end
+        local outputEntry = demands[demands.lastIndex]
+
+        -- Don't proceed unless there's room in this output buffer
+        local output = Network.getPortLane(outputEntry.port, outputEntry.lane)
+        if #output.buffer < MIN_BUFFER_LENGTH then
+        -- if #output.buffer < output.bufferLength then
+          -- Get the next input
+          lastSupplyIdx, inputEntry = next(inputs, lastSupplyIdx)
+          if not lastSupplyIdx then break end -- No more available
+
+          -- We're committed to delivery now, update the lastIndex for round-robin
+          local inputLane = inputEntry.port.entity.get_transport_line(inputEntry.lane)
+          
+          -- Calculate when the item should arrive based on belt speed and distance
+          local manhattanDistance = Util.manhattanDistance(inputEntry.port.entity.position, outputEntry.port.entity.position)
+          local outputSpeed = prototypes.entity[outputEntry.port.entity.name].belt_speed
+
+          -- Move the item from the input to the output
+          local entry = {
+            inventory=game.create_inventory(1),
+            tick = game.tick + manhattanDistance / outputSpeed,
+          }
+          entry.inventory.insert(inputLane[1])
+          table.insert(output.buffer, entry)
+          inputLane.remove_item(inputLane[1])
+        end
+
+        demands.lastIndex = demands.lastIndex % #demands + 1
+      end
+    end
+
+    -- Push items into outputs from their buffers
+    for _, output in pairs(network.outputs) do
+      for idx = 1, 2 do
+        local lane = output.entity.get_transport_line(idx)
+        if lane.can_insert_at_back() then
+          local buffer = Network.getPortLane(output, idx).buffer
+          if buffer[1] and buffer[1].tick <= game.tick then
+            local entry = table.remove(buffer, 1)
+            lane.insert_at_back(entry.inventory[1])
+            entry.inventory.destroy()
+          end
+        end
+      end
     end
   end
 end
@@ -115,14 +168,17 @@ function Network.getDemands(network, itemFilter)
   return network.demands[demandKey]
 end
 
-function Network.updateDemands(network, port, oldItemFilter, newItemFilter)
+function Network.updateDemands(network, port, laneIndex, newItemFilter)
+  local oldItemFilter = Network.getPortLane(port, laneIndex).item
   if Util.itemFiltersEqual(oldItemFilter, newItemFilter) then return end
   if oldItemFilter then
     -- Remove the old demand
     local oldDemandKey = Util.itemFilterToKey(oldItemFilter)
     local oldItemDemands = network.demands[oldDemandKey]
     if oldItemDemands then
-      Util.tableRemove(oldItemDemands, port)
+      Util.tableRemove(oldItemDemands, function (entry)
+        return entry.port == port and entry.lane == laneIndex
+      end)
       if #oldItemDemands == 0 then
         -- Clean up the demand array if now empty
         network.demands[oldDemandKey] = nil
@@ -137,7 +193,7 @@ function Network.updateDemands(network, port, oldItemFilter, newItemFilter)
       mewItemDemands = { lastIndex=0 } -- Track the last output index for round-robin delivery
       network.demands[newDemandKey] = mewItemDemands
     end
-    table.insert(mewItemDemands, port)
+    table.insert(mewItemDemands, { port=port, lane=laneIndex })
   end
 end
 
@@ -164,10 +220,11 @@ function Network.configurePort(entity, leftLane, rightLane)
   local network = Network.get(entity.surface.name)
   local port = Network.getPort(entity)
 
-  Network.updateDemands(network, port, port.leftLane.item, leftLane)
-  Network.updateDemands(network, port, port.rightLane.item, rightLane)
+  Network.updateDemands(network, port, 1, leftLane)
+  Network.updateDemands(network, port, 2, rightLane)
   port.leftLane.item = leftLane
   port.rightLane.item = rightLane
+  -- TODO: Spill the buffer if the item type changes
 end
 
 function Network.removePort(entity)
@@ -175,8 +232,8 @@ function Network.removePort(entity)
   local portGroup = Network.getPortGroup(entity)
   local port = portGroup[entity.unit_number]
 
-  Network.updateDemands(network, port, port.leftLane.item, nil)
-  Network.updateDemands(network, port, port.rightLane.item, nil)
+  Network.updateDemands(network, port, 1, nil)
+  Network.updateDemands(network, port, 2, nil)
   portGroup[entity.unit_number] = nil
 
   log("Removed: "..entity.name..", "..entity.surface.name)
