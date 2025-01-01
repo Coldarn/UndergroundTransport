@@ -1,5 +1,6 @@
 require("scripts/constants")
 Util = require("scripts/util")
+InventoryPool = require("scripts/inventory_pool")
 Network = require("scripts/network")
 GUI = require("scripts/gui")
 

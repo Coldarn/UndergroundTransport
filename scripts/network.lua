@@ -25,7 +25,8 @@ local Network = {
   -- }
 }
 
-local MIN_BUFFER_LENGTH = 100
+local MIN_BUFFER_LENGTH = 6 * 4 -- 6 tiles
+local BUFFER_LENGTH_RECALC_TICKS = 30 * 60 -- 30 seconds in ticks
 
 function Network.init()
   if not storage.networks then
@@ -36,7 +37,7 @@ end
 function Network.tick()
   local recalcBufferLenghts = not storage.nextRecalcTick or game.tick >= storage.nextRecalcTick
   if recalcBufferLenghts then
-    storage.nextRecalcTick = game.tick + 600
+    storage.nextRecalcTick = game.tick + BUFFER_LENGTH_RECALC_TICKS
   end
 
   for _, surface in pairs(game.surfaces) do
@@ -48,8 +49,9 @@ function Network.tick()
     -- Collect all inputs with items ready to deliver
     for _, inPort in pairs(network.inputs) do
       local entity = inPort.entity
+
+      -- Check for items ready on each input port lane
       for idx = 1, 2 do
-        -- Check for items ready on each input port lane
         local lane = entity.get_transport_line(idx)
         -- If there's room to insert an item at the end of the lane, it's not full yet
         if lane.can_insert_at(lane.line_length - 0.25) then goto laneLoop end
@@ -76,7 +78,10 @@ function Network.tick()
     end
 
     if recalcBufferLenghts then
-      -- TODO: Recalculate the buffer lengths for each output from the farthest input
+      -- Reset the buffer lengths for each output so they'll update to the farthest recent input
+      for _, outPort in pairs(network.outputs) do
+        outPort.bufferLength = MIN_BUFFER_LENGTH
+      end
     end
 
     -- Deliver each input item to the next output buffer in the round-robin list
@@ -84,38 +89,39 @@ function Network.tick()
       local demands = network.demands[itemKey]
 
       Util.tableShuffle(inputs)
-      local lastSupplyIdx = nil
+      local lastSupplyIdx, inputEntry = next(inputs, nil)
+      if not lastSupplyIdx then break end
 
       for _ = 1, #demands do
-        local inputEntry = nil
         if not demands[demands.lastIndex] then
           demands.lastIndex = 1
         end
         local outputEntry = demands[demands.lastIndex]
+        local manhattanDistance = Util.manhattanDistance(inputEntry.port.entity.position, outputEntry.port.entity.position)
 
         -- Don't proceed unless there's room in this output buffer
         local output = Network.getPortLane(outputEntry.port, outputEntry.lane)
-        if #output.buffer < MIN_BUFFER_LENGTH then
-        -- if #output.buffer < output.bufferLength then
-          -- Get the next input
-          lastSupplyIdx, inputEntry = next(inputs, lastSupplyIdx)
-          if not lastSupplyIdx then break end -- No more available
+        output.bufferLength = math.max(output.bufferLength, manhattanDistance * 4) -- 4 items/square 
 
+        if #output.buffer < output.bufferLength then
           -- We're committed to delivery now, update the lastIndex for round-robin
           local inputLane = inputEntry.port.entity.get_transport_line(inputEntry.lane)
           
           -- Calculate when the item should arrive based on belt speed and distance
-          local manhattanDistance = Util.manhattanDistance(inputEntry.port.entity.position, outputEntry.port.entity.position)
           local outputSpeed = prototypes.entity[outputEntry.port.entity.name].belt_speed
 
           -- Move the item from the input to the output
           local entry = {
-            inventory=game.create_inventory(1),
+            inventory=InventoryPool.checkout(),
             tick = game.tick + manhattanDistance / outputSpeed,
           }
           entry.inventory.insert(inputLane[1])
           table.insert(output.buffer, entry)
           inputLane.remove_item(inputLane[1])
+
+          -- Advance to the next input
+          lastSupplyIdx, inputEntry = next(inputs, lastSupplyIdx)
+          if not lastSupplyIdx then break end -- No more available
         end
 
         demands.lastIndex = demands.lastIndex % #demands + 1
@@ -131,7 +137,7 @@ function Network.tick()
           if buffer[1] and buffer[1].tick <= game.tick then
             local entry = table.remove(buffer, 1)
             lane.insert_at_back(entry.inventory[1])
-            entry.inventory.destroy()
+            InventoryPool.checkin(entry.inventory)
           end
         end
       end
