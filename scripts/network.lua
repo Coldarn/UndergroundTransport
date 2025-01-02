@@ -119,12 +119,13 @@ function Network.tick()
           table.insert(output.buffer, entry)
           inputLane.remove_item(inputLane[1])
 
+          -- Advance to the next output
+          demands.lastIndex = demands.lastIndex + 1
+
           -- Advance to the next input
           lastSupplyIdx, inputEntry = next(inputs, lastSupplyIdx)
           if not lastSupplyIdx then break end -- No more available
         end
-
-        demands.lastIndex = demands.lastIndex % #demands + 1
       end
     end
 
