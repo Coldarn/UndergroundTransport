@@ -16,6 +16,9 @@ function handleEntityCreated(event)
   local entity = event.entity or event.destination
   if not Util.isPort(entity) then return end
   Network.addPort(entity)
+  if event.tags then
+    Network.importSettings(entity, event.tags)
+  end
 end
 script.on_event(defines.events.on_entity_cloned, handleEntityCreated, EVENT_TYPE_FILTER)
 script.on_event(defines.events.on_built_entity, handleEntityCreated, EVENT_TYPE_FILTER)
@@ -23,6 +26,7 @@ script.on_event(defines.events.on_robot_built_entity, handleEntityCreated, EVENT
 script.on_event(defines.events.script_raised_built, handleEntityCreated, EVENT_TYPE_FILTER)
 script.on_event(defines.events.script_raised_revive, handleEntityCreated, EVENT_TYPE_FILTER)
 script.on_event(defines.events.on_space_platform_built_entity, handleEntityCreated, EVENT_TYPE_FILTER)
+script.on_event(defines.events.on_pre_entity_settings_pasted, handleEntityCreated)
 
 
 
@@ -33,12 +37,37 @@ function handleEntityRemoved(event)
   local proto = entity.prototype
   if not Util.isPort(entity) then return end
   Network.removePort(entity)
+  if event.buffer then
+    -- TODO: Transfer buffered items here
+  end
 end
 script.on_event(defines.events.on_entity_died, handleEntityRemoved, EVENT_TYPE_FILTER)
 script.on_event(defines.events.on_robot_mined_entity, handleEntityRemoved, EVENT_TYPE_FILTER)
 script.on_event(defines.events.on_player_mined_entity, handleEntityRemoved, EVENT_TYPE_FILTER)
 script.on_event(defines.events.script_raised_destroy, handleEntityRemoved, EVENT_TYPE_FILTER)
 script.on_event(defines.events.on_space_platform_mined_entity, handleEntityRemoved, EVENT_TYPE_FILTER)
+
+
+
+function handleBlueprintSetup(event)
+  if not event.stack or not event.stack.is_blueprint_setup() then return end
+
+  local blueprintEntities = event.stack.get_blueprint_entities()
+  if not blueprintEntities then return end
+
+  local mapping = event.mapping.get()
+  for _, bpEntity in pairs(blueprintEntities) do
+    if not Util.isPort(bpEntity) then goto continue end
+
+    local worldEntity = mapping[bpEntity.entity_number]
+    if not worldEntity then goto continue end
+
+    local settings = Network.exportSettings(worldEntity)
+    event.stack.set_blueprint_entity_tags(bpEntity.entity_number, settings)
+    ::continue::
+  end
+end
+script.on_event(defines.events.on_player_setup_blueprint, handleBlueprintSetup)
 
 
 
@@ -51,6 +80,7 @@ function handleLeftClick(event)
   local entity = player.selected
   if not entity or not Util.isPort(entity) or Util.isInput(entity) then return end
 
+  -- TODO: Don't open on clicking for copy/paste!
   GUI.openOutputPortGui(player, entity)
 end
 script.on_event(LEFT_CLICK_EVENT, handleLeftClick)

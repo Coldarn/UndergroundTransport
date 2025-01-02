@@ -223,6 +223,8 @@ function Network.addPort(entity)
 end
 
 function Network.configurePort(entity, leftLane, rightLane)
+  if not entity or not entity.valid then return end
+
   local network = Network.get(entity.surface.name)
   local port = Network.getPort(entity)
 
@@ -230,7 +232,6 @@ function Network.configurePort(entity, leftLane, rightLane)
   Network.updateDemands(network, port, 2, rightLane)
   port.leftLane.item = leftLane
   port.rightLane.item = rightLane
-  -- TODO: Spill the buffer if the item type changes
 end
 
 function Network.removePort(entity)
@@ -243,6 +244,18 @@ function Network.removePort(entity)
   portGroup[entity.unit_number] = nil
 
   log("Removed: "..entity.name..", "..entity.surface.name)
+end
+
+function Network.exportSettings(entity)
+  local port = Network.getPort(entity)
+  return {
+    [MOD_DATA_LEFT_LANE] = port.leftLane.item,
+    [MOD_DATA_RIGHT_LANE] = port.rightLane.item,
+  }
+end
+
+function Network.importSettings(entity, tags)
+  Network.configurePort(entity, tags[MOD_DATA_LEFT_LANE], tags[MOD_DATA_RIGHT_LANE])
 end
 
 return Network
