@@ -99,6 +99,9 @@ function Network.tick()
         local outputEntry = demands[demands.lastIndex]
         local manhattanDistance = Util.manhattanDistance(inputEntry.port.entity.position, outputEntry.port.entity.position)
 
+        -- Advance to the next output
+        demands.lastIndex = demands.lastIndex + 1
+
         -- Don't proceed unless there's room in this output buffer
         local output = Network.getPortLane(outputEntry.port, outputEntry.lane)
         output.bufferLength = math.max(output.bufferLength, manhattanDistance * 4) -- 4 items/square 
@@ -118,9 +121,6 @@ function Network.tick()
           entry.inventory.insert(inputLane[1])
           table.insert(output.buffer, entry)
           inputLane.remove_item(inputLane[1])
-
-          -- Advance to the next output
-          demands.lastIndex = demands.lastIndex + 1
 
           -- Advance to the next input
           lastSupplyIdx, inputEntry = next(inputs, lastSupplyIdx)
