@@ -116,7 +116,7 @@ function Network.tick()
           -- Move the item from the input to the output
           local entry = {
             inventory=InventoryPool.checkout(),
-            tick = game.tick + manhattanDistance / outputSpeed,
+            arriveTick = game.tick + manhattanDistance / outputSpeed,
           }
           entry.inventory.insert(inputLane[1])
           table.insert(output.buffer, entry)
@@ -135,7 +135,7 @@ function Network.tick()
         local lane = output.entity.get_transport_line(idx)
         if lane.can_insert_at_back() then
           local buffer = Network.getPortLane(output, idx).buffer
-          if buffer[1] and buffer[1].tick <= game.tick then
+          if buffer[1] and buffer[1].arriveTick <= game.tick then
             local entry = table.remove(buffer, 1)
             lane.insert_at_back(entry.inventory[1])
             InventoryPool.checkin(entry.inventory)
@@ -235,7 +235,7 @@ function Network.configurePort(entity, leftLane, rightLane)
   port.rightLane.item = rightLane
 end
 
-function Network.removePort(entity)
+function Network.removePort(entity, spillInventory)
   local network = Network.get(entity.surface.name)
   local portGroup = Network.getPortGroup(entity)
   local port = portGroup[entity.unit_number]
@@ -244,6 +244,15 @@ function Network.removePort(entity)
   Network.updateDemands(network, port, 2, nil)
   portGroup[entity.unit_number] = nil
 
+  if spillInventory then
+    function spill(lane)
+      for _, slot in pairs(lane.buffer) do
+        spillInventory.insert(slot.inventory[1])
+      end
+    end
+    spill(port.leftLane)
+    spill(port.rightLane)
+  end
   log("Removed: "..entity.name..", "..entity.surface.name)
 end
 

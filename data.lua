@@ -29,7 +29,7 @@ function makePort(undergroundPrototype, direction)
   end
 
   local item = {
-    type = "item",
+    type = "item-with-tags",
     name = entity.name,
     icon_size = 64,
     icon_mipmaps = 4,

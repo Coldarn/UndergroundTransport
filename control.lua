@@ -16,8 +16,8 @@ function handleEntityCreated(event)
   local entity = event.entity or event.destination
   if not Util.isPort(entity) then return end
   Network.addPort(entity)
-  if event.tags then
-    Network.importSettings(entity, event.tags)
+  if event.tags or event.stack.tags then
+    Network.importSettings(entity, event.tags or event.stack.tags)
   end
 end
 script.on_event(defines.events.on_entity_cloned, handleEntityCreated, EVENT_TYPE_FILTER)
@@ -34,12 +34,19 @@ script.on_event(defines.events.on_pre_entity_settings_pasted, handleEntityCreate
 ---@param event EventData.on_entity_died|EventData.on_robot_mined_entity|EventData.on_player_mined_entity|EventData.script_raised_destroy
 function handleEntityRemoved(event)
   local entity = event.entity
-  local proto = entity.prototype
   if not Util.isPort(entity) then return end
-  Network.removePort(entity)
-  if event.buffer then
-    -- TODO: Transfer buffered items here
-  end
+
+  -- This copies this port's settings to the created item, not sure that's helpful though...
+  -- local settings = Network.exportSettings(entity)
+  -- for idx = 1, #event.buffer do
+  --   local item = event.buffer[idx]
+  --   if item.name == entity.name then
+  --     for tag, value in pairs(settings) do
+  --       item.set_tag(tag, value)
+  --     end
+  --   end
+  -- end
+  Network.removePort(entity, event.buffer)
 end
 script.on_event(defines.events.on_entity_died, handleEntityRemoved, EVENT_TYPE_FILTER)
 script.on_event(defines.events.on_robot_mined_entity, handleEntityRemoved, EVENT_TYPE_FILTER)
@@ -49,6 +56,7 @@ script.on_event(defines.events.on_space_platform_mined_entity, handleEntityRemov
 
 
 
+-- Copy output configuration to the blueprint entities
 function handleBlueprintSetup(event)
   if not event.stack or not event.stack.is_blueprint_setup() then return end
 
