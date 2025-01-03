@@ -16,7 +16,7 @@ function handleEntityCreated(event)
   local entity = event.entity or event.destination
   if not Util.isPort(entity) then return end
   Network.addPort(entity)
-  if event.tags or event.stack.tags then
+  if event.tags or (event.stack and event.stack.tags) then
     Network.importSettings(entity, event.tags or event.stack.tags)
   end
 end
