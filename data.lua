@@ -50,8 +50,8 @@ function makePort(undergroundPrototype, direction)
     type = "recipe",
     name = entity.name,
     enabled = false, -- is_enabled_at_game_start is a more descriptive name
-    ingredients = {{type="item", name=undergroundPrototype.name, amount=2}},
-    results     = {{type="item", name=entity.name, amount=2}}
+    ingredients = {{type="item", name=undergroundPrototype.name, amount=5}},
+    results     = {{type="item", name=entity.name, amount=1}}
   }
 
   data:extend{entity, item, recipe}
