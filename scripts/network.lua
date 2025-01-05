@@ -109,17 +109,9 @@ function Network.tick()
         if #output.buffer < output.bufferLength then
           -- We're committed to delivery now, update the lastIndex for round-robin
           local inputLane = inputEntry.port.entity.get_transport_line(inputEntry.lane)
-          
-          -- Calculate when the item should arrive based on belt speed and distance
-          local outputSpeed = prototypes.entity[outputEntry.port.entity.name].belt_speed
 
           -- Move the item from the input to the output
-          local entry = {
-            inventory=InventoryPool.checkout(),
-            arriveTick = game.tick + manhattanDistance / outputSpeed,
-          }
-          entry.inventory.insert(inputLane[1])
-          table.insert(output.buffer, entry)
+          Network.insertItem(outputEntry.port, output, inputLane[1], manhattanDistance)
           inputLane.remove_item(inputLane[1])
 
           -- Advance to the next input
@@ -134,11 +126,11 @@ function Network.tick()
       for idx = 1, 2 do
         local lane = output.entity.get_transport_line(idx)
         if lane.can_insert_at_back() then
-          local buffer = Network.getPortLane(output, idx).buffer
+          local portLane = Network.getPortLane(output, idx)
+          local buffer = portLane.buffer
           if buffer[1] and buffer[1].arriveTick <= game.tick then
-            local entry = table.remove(buffer, 1)
-            lane.insert_at_back(entry.inventory[1])
-            InventoryPool.checkin(entry.inventory)
+            lane.insert_at_back(buffer[1].inventory[1])
+            Network.removeItem(output, portLane, 1)
           end
         end
       end
@@ -168,6 +160,71 @@ function Network.getPortLane(port, lane)
   if lane == 1 then return port.leftLane
   elseif lane == 2 then return port.rightLane end
   return nil
+end
+
+-- Inserts an item into the given port and lane's buffer
+function Network.insertItem(port, lane, item, manhattanDistance)
+  -- Calculate when the item should arrive based on belt speed and distance
+  local outputSpeed = prototypes.entity[port.entity.name].belt_speed
+
+  local entry = {
+    inventory=InventoryPool.checkout(),
+    arriveTick = game.tick + manhattanDistance / outputSpeed,
+  }
+  entry.inventory.insert(item)
+  table.insert(lane.buffer, entry)
+
+  updateItemCount(port, Util.itemFilterToKey(item), item.count or 1)
+end
+
+-- Removes an item by index from the given port and lane's buffer
+function Network.removeItem(port, lane, bufferIndex)
+  local entry = lane.buffer[bufferIndex]
+  local itemKey = Util.itemFilterToKey(entry.inventory[1])
+  local itemCount = entry.inventory[1].count or 1
+  entry.inventory.clear()
+  InventoryPool.checkin(entry.inventory)
+  table.remove(lane.buffer, bufferIndex)
+
+  updateItemCount(port, itemKey, -itemCount)
+end
+
+-- Returns a map of itemKey->count for the given port
+function Network.getItemCounts(port)
+  if not port.itemCounts then
+    updateItemCount(port)
+  end
+  return port.itemCounts
+end
+
+-- Updates the static count of items in the given ports buffers
+function updateItemCount(port, itemKey, itemCount)
+  if not port.itemCounts then
+    -- First time accessed we have to count everything in the buffer
+    port.itemCounts = {}
+    function count(lane)
+      for _, entry in ipairs(lane.buffer) do
+        local item = entry.inventory[1]
+        local key = Util.itemFilterToKey(item)
+        if not port.itemCounts[key] then
+          port.itemCounts[key] = 0
+        end
+        port.itemCounts[key] = port.itemCounts[key] + item.count
+      end
+    end
+    count(port.leftLane)
+    count(port.rightLane)
+  else
+    -- After that we can just increment the existing counts
+    if not port.itemCounts[itemKey] then
+      port.itemCounts[itemKey] = 0
+    end
+    port.itemCounts[itemKey] = port.itemCounts[itemKey] + itemCount
+
+    if port.itemCounts[itemKey] < 1 then
+      port.itemCounts[itemKey] = nil
+    end
+  end
 end
 
 function Network.getDemands(network, itemFilter)
@@ -205,6 +262,7 @@ function Network.updateDemands(network, port, laneIndex, newItemFilter)
 end
 
 function Network.addPort(entity)
+  entity.disconnect_linked_belts()
   entity.linked_belt_type = Util.isInput(entity.prototype) and 'input' or 'output'
 
   Network.getPortGroup(entity)[entity.unit_number] = {
@@ -213,11 +271,13 @@ function Network.addPort(entity)
       item = nil,
       buffer = {},
       bufferLength = MIN_BUFFER_LENGTH,
+      itemCounts = {},
     },
     rightLane = {
       item = nil,
       buffer = {},
       bufferLength = MIN_BUFFER_LENGTH,
+      itemCounts = {},
     },
   }
   log("Added: "..entity.name..", "..entity.surface.name)

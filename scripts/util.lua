@@ -5,6 +5,7 @@ local Util = {}
 ---@param start string String to look for at the beginning of `str`
 ---@return boolean
 function Util.startsWith(str, start)
+  if not str then return false end
   return string.sub(str, 1, string.len(start)) == start
 end
 
@@ -59,6 +60,11 @@ end
 
 function Util.itemFilterToKey(filter)
   return filter.name.."/"..(filter.quality.name and filter.quality.name or filter.quality)
+end
+
+function Util.itemFilterFromKey(key)
+  local splitIndex = string.find(key, '/', 2)
+  return string.sub(key, 1, splitIndex - 1), string.sub(key, splitIndex + 1)
 end
 
 function Util.itemFiltersEqual(filter1, filter2)
