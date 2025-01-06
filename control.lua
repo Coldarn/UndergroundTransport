@@ -6,7 +6,10 @@ GUI = require("scripts/gui")
 
 
 script.on_init(Network.init)
-script.on_event(defines.events.on_tick, Network.tick)
+script.on_event(defines.events.on_tick, function ()
+  Network.tick()
+  GUI.updateInventory()
+end)
 
 
 
@@ -83,7 +86,7 @@ script.on_event(defines.events.on_player_setup_blueprint, handleBlueprintSetup)
 function handleLeftClick(event)
   local player = game.get_player(event.player_index)
   if not player then return end
-  GUI.closeOutputPortGui(player)
+  GUI.closeOutputPortGui(event)
 
   local entity = player.selected
   if not entity or not Util.isPort(entity) or Util.isInput(entity) then return end
