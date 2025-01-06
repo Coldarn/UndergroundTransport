@@ -102,6 +102,16 @@ function GUI.closeOutputPortGui(event)
   end
 end
 
+function GUI.checkClose(entity)
+  if not storage.guiData then return end
+  for playerIndex, data in pairs(storage.guiData) do
+    if data.entity == entity then
+      GUI.closeOutputPortGui{player_index=playerIndex}
+      break
+    end
+  end
+end
+
 function GUI.updateButtonStates(data)
   data.bothButtonLeft.enabled = not not data.chooseLeftButton.elem_value
   data.bothButtonRight.enabled = not not data.chooseRightButton.elem_value
@@ -115,7 +125,7 @@ function GUI.updateInventory()
   for playerIndex, data in pairs(storage.guiData) do
     if not data.outputPortWindow.valid then
       -- Cleanup bogus state if the window was closed externally
-      storage.guiData[playerIndex] = nil
+      GUI.closeOutputPortGui{player_index=playerIndex}
       return
     end
     local itemToCount = Network.getItemCounts(data.port)

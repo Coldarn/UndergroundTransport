@@ -153,6 +153,7 @@ function Network.getPortGroup(entity)
 end
 
 function Network.getPort(entity)
+  if not Util.isPort(entity) then return nil end
   if Util.isGhost(entity) then
     return {
       entity=entity,
@@ -190,7 +191,6 @@ function Network.removeItem(port, lane, bufferIndex)
   local entry = lane.buffer[bufferIndex]
   local itemKey = Util.itemFilterToKey(entry.inventory[1])
   local itemCount = entry.inventory[1].count or 1
-  entry.inventory.clear()
   InventoryPool.checkin(entry.inventory)
   table.remove(lane.buffer, bufferIndex)
 
@@ -269,26 +269,45 @@ function Network.updateDemands(network, port, laneIndex, newItemFilter)
   end
 end
 
-function Network.addPort(entity)
+function Network.addPort(entity, priorEntity)
   entity.disconnect_linked_belts()
   entity.linked_belt_type = Util.isInput(entity) and 'input' or 'output'
 
   if Util.isGhost(entity) then return end
+  local newPort = nil
 
-  Network.getPortGroup(entity)[entity.unit_number] = {
-    entity = entity,
-    itemCounts = {},
-    leftLane = {
-      item = nil,
-      buffer = {},
-      bufferLength = MIN_BUFFER_LENGTH,
-    },
-    rightLane = {
-      item = nil,
-      buffer = {},
-      bufferLength = MIN_BUFFER_LENGTH,
-    },
-  }
+  local upgradeInPlace = not not priorEntity
+  local isSameDirection = upgradeInPlace and Util.isInput(entity) == Util.isInput(priorEntity)
+  if upgradeInPlace and isSameDirection then
+    -- For in-place upgrade, preserve the prior port's settings and buffers but replace the port entity
+    local group = Network.getPortGroup(priorEntity)
+    local upgradePort = group[priorEntity.unit_number]
+    newPort = upgradePort
+    newPort.entity = entity
+    group[priorEntity.unit_number] = nil
+  else
+    -- For new ports, create an empty model
+    newPort = {
+      entity = entity,
+      itemCounts = {},
+      leftLane = {
+        item = nil,
+        buffer = {},
+        bufferLength = MIN_BUFFER_LENGTH,
+      },
+      rightLane = {
+        item = nil,
+        buffer = {},
+        bufferLength = MIN_BUFFER_LENGTH,
+      },
+    }
+    if upgradeInPlace then
+      -- If the new port direction doesn't match the prior one, remove the old port
+      Network.removePort(priorEntity)
+    end
+  end
+  Network.getPortGroup(entity)[entity.unit_number] = newPort
+
   log("Added: "..entity.name..", "..entity.surface.name)
 end
 
@@ -309,6 +328,7 @@ function Network.configurePort(entity, leftLane, rightLane)
 end
 
 function Network.removePort(entity, spillInventory)
+  GUI.checkClose(entity)
   if Util.isGhost(entity) then return end
 
   local network = Network.get(entity.surface.name)
@@ -319,21 +339,30 @@ function Network.removePort(entity, spillInventory)
   Network.updateDemands(network, port, 2, nil)
   portGroup[entity.unit_number] = nil
 
-  if spillInventory then
-    function spill(lane)
-      for _, slot in pairs(lane.buffer) do
+  function spill(lane)
+    for _, slot in pairs(lane.buffer) do
+      if spillInventory then
+        -- Insert into the given inventory
         spillInventory.insert(slot.inventory[1])
+      else
+        -- Otherwise, spill onto the ground around the port
+        entity.surface.spill_item_stack{
+          position=entity.position,
+          stack=slot.inventory[1],
+          allow_belts=false,
+        }
       end
+      InventoryPool.checkin(slot.inventory)
     end
-    spill(port.leftLane)
-    spill(port.rightLane)
   end
+  spill(port.leftLane)
+  spill(port.rightLane)
   log("Removed: "..entity.name..", "..entity.surface.name)
 
 -- Returns configuration settings for the given entity in a tags-compatible table
 function Network.exportSettings(entity)
   if Util.isGhost(entity) then
-    return entity.tags
+    return entity.tags or {}
   else
   local port = Network.getPort(entity)
     return createSettings(port.leftLane.item, port.rightLane.item)

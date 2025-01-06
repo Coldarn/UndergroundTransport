@@ -11,16 +11,25 @@ script.on_event(defines.events.on_tick, function ()
   GUI.updateInventory()
 end)
 
-
+local UPGRADE_PORT_DATA = nil
 
 ---Handles cration of a port
 ---@param event EventData.on_built_entity|EventData.on_robot_built_entity|EventData.on_entity_cloned|EventData.script_raised_built|EventData.script_raised_revive
 function handleEntityCreated(event)
+  local upgradeEntity = UPGRADE_PORT_DATA
+  UPGRADE_PORT_DATA = nil
+  if upgradeEntity and not upgradeEntity.name then
+    -- Not an in-place upgrade
+    upgradeEntity = nil
+  end
+
   local entity = event.entity or event.destination
   if not Util.isPort(entity) then return end
-  Network.addPort(entity)
-  if event.tags or (event.stack and event.stack.tags) then
-    Network.importSettings(entity, event.tags or event.stack.tags)
+  Network.addPort(entity, upgradeEntity)
+
+  local settings = event.tags or (event.stack and event.stack.tags)-- or priorSettings
+  if settings then
+    Network.importSettings(entity, settings)
   end
 end
 script.on_event(defines.events.on_entity_cloned, handleEntityCreated, EVENT_TYPE_FILTER)
@@ -29,7 +38,14 @@ script.on_event(defines.events.on_robot_built_entity, handleEntityCreated, EVENT
 script.on_event(defines.events.script_raised_built, handleEntityCreated, EVENT_TYPE_FILTER)
 script.on_event(defines.events.script_raised_revive, handleEntityCreated, EVENT_TYPE_FILTER)
 script.on_event(defines.events.on_space_platform_built_entity, handleEntityCreated, EVENT_TYPE_FILTER)
-script.on_event(defines.events.on_pre_entity_settings_pasted, handleEntityCreated)
+
+
+
+-- Record settings from an existing port at the new build locaation so we can transfer them to the new port
+function handlePreBuildEntity(event)
+  UPGRADE_PORT_DATA = { position=event.position }
+end
+script.on_event(defines.events.on_pre_build, handlePreBuildEntity)
 
 
 
@@ -49,7 +65,17 @@ function handleEntityRemoved(event)
   --     end
   --   end
   -- end
+  if UPGRADE_PORT_DATA and Util.positionsEqual(UPGRADE_PORT_DATA.position, entity.position) then
+    -- Upgrade this port in-place, so save some data_ModSetting for use in handleEntityCreated
+    UPGRADE_PORT_DATA.name = entity.name
+    UPGRADE_PORT_DATA.type = entity.type
+    UPGRADE_PORT_DATA.unit_number = entity.unit_number
+    UPGRADE_PORT_DATA.surface = entity.surface
+  else
+    -- Remove the port entirely
   Network.removePort(entity, event.buffer)
+  end
+  GUI.checkClose(entity)
 end
 script.on_event(defines.events.on_entity_died, handleEntityRemoved, EVENT_TYPE_FILTER)
 script.on_event(defines.events.on_robot_mined_entity, handleEntityRemoved, EVENT_TYPE_FILTER)

@@ -78,4 +78,8 @@ function Util.itemFiltersEqual(filter1, filter2)
     (filter1 and filter2 and filter1.name == filter2.name and filter1.quality == filter2.quality)
 end
 
+function Util.positionsEqual(pos1, pos2)
+  return pos1 and pos2 and pos1.x == pos2.x and pos1.y == pos2.y
+end
+
 return Util
