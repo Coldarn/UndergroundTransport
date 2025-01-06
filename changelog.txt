@@ -1,4 +1,11 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.1.3
+Date: 2025-01-05
+  Bugfixes:
+    - Fix issues opening and closing the port configuration window in multiplayer
+    - Fix a stuck port configuration window if saved while it was open in multiplayer
+
+---------------------------------------------------------------------------------------------------
 Version: 0.1.2
 Date: 2025-01-05
   Bugfixes:

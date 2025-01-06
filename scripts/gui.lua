@@ -1,8 +1,5 @@
 local GUI = {}
 
--- Maps player index to data backing their port configuration window
-local PlayerData = {}
-
 local INVENTORY_UPDATE_TICKS = 5
 local INVENTORY_PREFIX = 'ut-inventory/'
 
@@ -29,7 +26,10 @@ function GUI.openOutputPortGui(player, entity)
     inventoryButtons = {},
     dirty = false, -- Set true if a change is made
   }
-  PlayerData[player.index] = data
+  if not storage.guiData then
+    storage.guiData = {}
+  end
+  storage.guiData[player.index] = data
 
   local titlebar = window.add{ type="flow"}
   titlebar.drag_target = window
@@ -92,16 +92,14 @@ function GUI.openOutputPortGui(player, entity)
 end
 
 function GUI.closeOutputPortGui(event)
-  log("Attempted close by: "..event.player_index)
-  -- Close the window if the local player is the one who opened it
-  local data = PlayerData[event.player_index]
+  if not storage.guiData then return end
+  local data = storage.guiData[event.player_index]
   if data then
     if data.dirty then
       Network.configurePort(data.entity, data.chooseLeftButton.elem_value, data.chooseRightButton.elem_value)
     end
     data.outputPortWindow.destroy()
-    PlayerData[event.player_index] = nil
-    log("CLOSED BY: "..event.player_index)
+    storage.guiData[event.player_index] = nil
   end
 end
 
@@ -113,8 +111,14 @@ end
 
 function GUI.updateInventory()
   if game.tick % INVENTORY_UPDATE_TICKS ~= 0 then return end
+  if not storage.guiData then return end
 
-  for _, data in pairs(PlayerData) do
+  for playerIndex, data in pairs(storage.guiData) do
+    if not data.outputPortWindow.valid then
+      -- Cleanup bogus state if the window was closed externally
+      storage.guiData[playerIndex] = nil
+      return
+    end
     local itemToCount = Network.getItemCounts(data.port)
 
     -- Add new buttons as needed
@@ -139,7 +143,8 @@ function GUI.updateInventory()
 end
 
 function handleClick(event)
-  local data = PlayerData[event.player_index]
+  if not storage.guiData then return end
+  local data = storage.guiData[event.player_index]
   if not data then return end
 
   if event.element == data.closeButton then
@@ -176,7 +181,8 @@ script.on_event(defines.events.on_gui_click, handleClick)
 script.on_event(defines.events.on_gui_closed, GUI.closeOutputPortGui)
 
 function handleChooseElem(event)
-  local data = PlayerData[event.player_index]
+  if not storage.guiData then return end
+  local data = storage.guiData[event.player_index]
   if event.element == data.chooseLeftButton then
     GUI.updateButtonStates(data)
   elseif event.element == data.chooseRightButton then
