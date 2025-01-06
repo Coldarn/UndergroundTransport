@@ -4,7 +4,6 @@ local INVENTORY_UPDATE_TICKS = 5
 local INVENTORY_PREFIX = 'ut-inventory/'
 
 function GUI.openOutputPortGui(player, entity)
-  log("OPENED BY: "..player.index)
   local screen_element = player.gui.screen
   local window = screen_element.add{
     type = "frame",
@@ -160,6 +159,7 @@ function handleClick(event)
     local itemKey = string.sub(event.element.name, string.len(INVENTORY_PREFIX) + 1)
     local player = game.get_player(event.player_index)
     local inventory = player.get_main_inventory()
+    if not inventory then return end
     
     function insertFrom(lane)
       for i = #lane.buffer, 1, -1 do
