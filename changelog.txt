@@ -1,0 +1,13 @@
+---------------------------------------------------------------------------------------------------
+Version: 0.1.2
+Date: 2025-01-05
+  Bugfixes:
+    - Several crashes due to poor ghost handling
+  Features:
+    - Ghost input and output ports can now be placed, configured, and copy/pasted!
+
+---------------------------------------------------------------------------------------------------
+Version: 0.1.1
+Date: 2025-01-04
+  Major Features:
+    - Alpha launch!

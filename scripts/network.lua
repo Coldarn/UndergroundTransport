@@ -149,10 +149,18 @@ end
 
 function Network.getPortGroup(entity)
   local network = Network.get(entity.surface.name)
-  return network[Util.isInput(entity.prototype) and 'inputs' or 'outputs']
+  return network[Util.isInput(entity) and 'inputs' or 'outputs']
 end
 
 function Network.getPort(entity)
+  if Util.isGhost(entity) then
+    return {
+      entity=entity,
+      itemCounts={},
+      leftLane={item=entity.tags[MOD_DATA_LEFT_LANE]},
+      rightLane={item=entity.tags[MOD_DATA_RIGHT_LANE]},
+    }
+  end
   return Network.getPortGroup(entity)[entity.unit_number]
 end
 
@@ -263,21 +271,22 @@ end
 
 function Network.addPort(entity)
   entity.disconnect_linked_belts()
-  entity.linked_belt_type = Util.isInput(entity.prototype) and 'input' or 'output'
+  entity.linked_belt_type = Util.isInput(entity) and 'input' or 'output'
+
+  if Util.isGhost(entity) then return end
 
   Network.getPortGroup(entity)[entity.unit_number] = {
     entity = entity,
+    itemCounts = {},
     leftLane = {
       item = nil,
       buffer = {},
       bufferLength = MIN_BUFFER_LENGTH,
-      itemCounts = {},
     },
     rightLane = {
       item = nil,
       buffer = {},
       bufferLength = MIN_BUFFER_LENGTH,
-      itemCounts = {},
     },
   }
   log("Added: "..entity.name..", "..entity.surface.name)
@@ -286,6 +295,9 @@ end
 function Network.configurePort(entity, leftLane, rightLane)
   if not entity or not entity.valid then return end
 
+  if Util.isGhost(entity) then
+    entity.tags = createSettings(leftLane, rightLane)
+  else
   local network = Network.get(entity.surface.name)
   local port = Network.getPort(entity)
 
@@ -293,9 +305,12 @@ function Network.configurePort(entity, leftLane, rightLane)
   Network.updateDemands(network, port, 2, rightLane)
   port.leftLane.item = leftLane
   port.rightLane.item = rightLane
+  end
 end
 
 function Network.removePort(entity, spillInventory)
+  if Util.isGhost(entity) then return end
+
   local network = Network.get(entity.surface.name)
   local portGroup = Network.getPortGroup(entity)
   local port = portGroup[entity.unit_number]
@@ -314,18 +329,31 @@ function Network.removePort(entity, spillInventory)
     spill(port.rightLane)
   end
   log("Removed: "..entity.name..", "..entity.surface.name)
+
+-- Returns configuration settings for the given entity in a tags-compatible table
+function Network.exportSettings(entity)
+  if Util.isGhost(entity) then
+    return entity.tags
+  else
+  local port = Network.getPort(entity)
+    return createSettings(port.leftLane.item, port.rightLane.item)
+  end
 end
 
-function Network.exportSettings(entity)
-  local port = Network.getPort(entity)
+function createSettings(leftItem, rightItem)
   return {
-    [MOD_DATA_LEFT_LANE] = port.leftLane.item,
-    [MOD_DATA_RIGHT_LANE] = port.rightLane.item,
+    [MOD_DATA_LEFT_LANE] = leftItem,
+    [MOD_DATA_RIGHT_LANE] = rightItem,
   }
 end
 
+-- Updates configuration settings for the given entity from the given tags-compatible table
 function Network.importSettings(entity, tags)
+  if Util.isGhost(entity) then
+    entity.tags = tags
+  else
   Network.configurePort(entity, tags[MOD_DATA_LEFT_LANE], tags[MOD_DATA_RIGHT_LANE])
+  end
 end
 
 return Network
