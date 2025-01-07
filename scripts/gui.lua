@@ -123,7 +123,7 @@ function GUI.updateInventory()
   if not storage.guiData then return end
 
   for playerIndex, data in pairs(storage.guiData) do
-    if not data.outputPortWindow.valid then
+    if not data.outputPortWindow.valid or not data.entity.valid then
       -- Cleanup bogus state if the window was closed externally
       GUI.closeOutputPortGui{player_index=playerIndex}
       return

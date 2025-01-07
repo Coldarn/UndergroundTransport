@@ -3,12 +3,14 @@ Util = require("scripts/util")
 InventoryPool = require("scripts/inventory_pool")
 Network = require("scripts/network")
 GUI = require("scripts/gui")
+UndoTracker = require("scripts/undo_tracker")
 
 
 script.on_init(Network.init)
 script.on_event(defines.events.on_tick, function ()
   Network.tick()
   GUI.updateInventory()
+  UndoTracker.tick()
 end)
 
 local UPGRADE_PORT_DATA = nil
@@ -71,8 +73,14 @@ function handleEntityRemoved(event)
     UPGRADE_PORT_DATA.type = entity.type
     UPGRADE_PORT_DATA.unit_number = entity.unit_number
     UPGRADE_PORT_DATA.surface = entity.surface
+    UPGRADE_PORT_DATA.tags = entity.tags
   else
     -- Remove the port entirely
+    local tags = Network.exportSettings(entity)
+    if next(tags, nil) then
+      -- If the port has any settings, save them for the undo record next tick
+      UndoTracker.recordPortRemoved(entity, tags)
+    end
     Network.removePort(entity, event.buffer)
   end
   GUI.checkClose(entity)
@@ -118,6 +126,7 @@ function handleLeftClick(event)
   if not entity or not Util.isPort(entity) or Util.isInput(entity) then return end
 
   -- TODO: Don't open on clicking for copy/paste!
+  -- check if copy/paste tool is active?
   GUI.openOutputPortGui(player, entity)
 end
 script.on_event(LEFT_CLICK_EVENT, handleLeftClick)

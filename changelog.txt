@@ -1,4 +1,12 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.1.6
+Date: 2025-01-07
+  Bugfixes:
+    - Fix error opening the configuration window on output ghosts never before configured
+  Features:
+    - Port settings are now properly restored on undo/redo!
+
+---------------------------------------------------------------------------------------------------
 Version: 0.1.5
 Date: 2025-01-06
   Bugfixes:

@@ -175,11 +175,12 @@ end
 function Network.getPort(entity)
   if not Util.isPort(entity) then return nil end
   if Util.isGhost(entity) then
+    local tags = entity.tags or {}
     return {
       entity=entity,
       itemCounts={},
-      leftLane={item=entity.tags[MOD_DATA_LEFT_LANE]},
-      rightLane={item=entity.tags[MOD_DATA_RIGHT_LANE]},
+      leftLane={item=tags[MOD_DATA_LEFT_LANE]},
+      rightLane={item=tags[MOD_DATA_RIGHT_LANE]},
     }
   end
   return Network.getPortGroup(entity)[entity.unit_number]
@@ -300,20 +301,19 @@ function Network.addPort(entity, priorEntity)
   entity.linked_belt_type = Util.isInput(entity) and 'input' or 'output'
 
   if Util.isGhost(entity) then return end
-  local newPort = nil
 
+  local priorIsGhost = priorEntity and Util.isGhost(priorEntity)
   local upgradeInPlace = not not priorEntity
   local isSameDirection = upgradeInPlace and Util.isInput(entity) == Util.isInput(priorEntity)
-  if upgradeInPlace and isSameDirection then
+  local priorGroup = priorEntity and Network.getPortGroup(priorEntity)
+  local port = priorGroup and priorGroup[priorEntity.unit_number]
+  if upgradeInPlace and isSameDirection and port then
     -- For in-place upgrade, preserve the prior port's settings and buffers but replace the port entity
-    local group = Network.getPortGroup(priorEntity)
-    local upgradePort = group[priorEntity.unit_number]
-    newPort = upgradePort
-    newPort.entity = entity
-    group[priorEntity.unit_number] = nil
+    port.entity = entity
+    priorGroup[priorEntity.unit_number] = nil
   else
     -- For new ports, create an empty model
-    newPort = {
+    port = {
       entity = entity,
       itemCounts = {},
       leftLane = {
@@ -332,7 +332,11 @@ function Network.addPort(entity, priorEntity)
       Network.removePort(priorEntity)
     end
   end
-  Network.getPortGroup(entity)[entity.unit_number] = newPort
+  Network.getPortGroup(entity)[entity.unit_number] = port
+
+  if priorIsGhost and priorEntity.tags then
+    Network.importSettings(entity, priorEntity.tags)
+  end
 
   log("Added: "..entity.name..", "..entity.surface.name)
 end
@@ -384,6 +388,7 @@ function Network.removePort(entity, spillInventory)
   spill(port.leftLane)
   spill(port.rightLane)
   log("Removed: "..entity.name..", "..entity.surface.name)
+end
 
 -- Returns configuration settings for the given entity in a tags-compatible table
 function Network.exportSettings(entity)
