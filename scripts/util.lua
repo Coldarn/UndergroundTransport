@@ -50,8 +50,8 @@ end
 
 -- Returns true if the given entity is an underground transport port
 function Util.isPort(entity)
-  return Util.startsWith(entity.name, NAME_PREFIX)
-    or (Util.isGhost(entity) and Util.startsWith(entity.ghost_name, NAME_PREFIX))
+  return entity and (Util.startsWith(entity.name, NAME_PREFIX)
+    or (Util.isGhost(entity) and Util.startsWith(entity.ghost_name, NAME_PREFIX)))
 end
 
 function Util.isGhost(entity)

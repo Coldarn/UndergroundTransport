@@ -1,4 +1,12 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.1.5
+Date: 2025-01-06
+  Bugfixes:
+    - Inserters can now place directly into input ports, before only belt inputs worked
+  Features:
+    - Add support for upgrading ports in-place, preserving their settings and buffered items!
+
+---------------------------------------------------------------------------------------------------
 Version: 0.1.4
 Date: 2025-01-05
   Bugfixes:

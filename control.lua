@@ -73,7 +73,7 @@ function handleEntityRemoved(event)
     UPGRADE_PORT_DATA.surface = entity.surface
   else
     -- Remove the port entirely
-  Network.removePort(entity, event.buffer)
+    Network.removePort(entity, event.buffer)
   end
   GUI.checkClose(entity)
 end

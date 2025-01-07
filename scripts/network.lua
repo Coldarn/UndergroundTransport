@@ -27,11 +27,27 @@ local Network = {
 
 local MIN_BUFFER_LENGTH = 6 * 4 -- 6 tiles
 local BUFFER_LENGTH_RECALC_TICKS = 30 * 60 -- 30 seconds in ticks
+local INSERTER_SCAN_RADIUS = 3
 
 function Network.init()
   if not storage.networks then
     storage.networks = {}
   end
+end
+
+function trackInput(network, supplies, port, item, laneIndex, inserter)
+  -- We have an iteam ready, now check if any outputs want it
+  local itemKey = Util.itemFilterToKey(item)
+  local demands = network.demands[itemKey]
+  if not demands or #demands == 0 then return end
+
+  -- Store this input for delivery down below
+  local inputs = supplies[itemKey]
+  if not inputs then
+    inputs = {}
+    supplies[itemKey] = inputs
+  end
+  table.insert(inputs, { port=port, lane=laneIndex, inserter=inserter })
 end
 
 function Network.tick()
@@ -51,29 +67,30 @@ function Network.tick()
       local entity = inPort.entity
 
       -- Check for items ready on each input port lane
+      local canDrop = false
       for idx = 1, 2 do
         local lane = entity.get_transport_line(idx)
+        
         -- If there's room to insert an item at the end of the lane, it's not full yet
-        if lane.can_insert_at(lane.line_length - 0.25) then goto laneLoop end
-
-        -- [1] should be the last item on the lane
-        local item = lane[1]
-        if not item then goto laneLoop end
-
-        -- We have an iteam ready, now check if any outputs want it
-        local itemKey = Util.itemFilterToKey(item)
-        local demands = network.demands[itemKey]
-        if not demands or #demands == 0 then goto laneLoop end
-
-        -- Store this input for delivery down below
-        local inputs = supplies[itemKey]
-        if not inputs then
-          inputs = {}
-          supplies[itemKey] = inputs
+        if lane.can_insert_at(lane.line_length - 0.25) then
+          canDrop = true
+          goto laneLoop
         end
-        table.insert(inputs, { port=inPort, lane=idx })
-
+        
+        -- [1] should be the last item on the lane
+        trackInput(network, supplies, inPort, lane[1], idx)
         ::laneLoop::
+      end
+      if canDrop then
+        -- Check if there's an inserter waiting to drop here as well
+        local inserters = surface.find_entities_filtered{position=entity.position, radius=INSERTER_SCAN_RADIUS, type="inserter"}
+        for _, inserter in pairs(inserters) do
+          if inserter.drop_target == entity
+            and inserter.held_stack.count > 0
+            and Util.positionsEqual(inserter.held_stack_position, inserter.drop_position) then
+            trackInput(network, supplies, inPort, inserter.held_stack, nil, inserter)
+          end
+        end
       end
     end
 
@@ -107,12 +124,15 @@ function Network.tick()
         output.bufferLength = math.max(output.bufferLength, manhattanDistance * 4) -- 4 items/square 
 
         if #output.buffer < output.bufferLength then
-          -- We're committed to delivery now, update the lastIndex for round-robin
-          local inputLane = inputEntry.port.entity.get_transport_line(inputEntry.lane)
-
-          -- Move the item from the input to the output
-          Network.insertItem(outputEntry.port, output, inputLane[1], manhattanDistance)
-          inputLane.remove_item(inputLane[1])
+          if inputEntry.lane then
+            -- Insert from one of the input's lanes
+            local inputLane = inputEntry.port.entity.get_transport_line(inputEntry.lane)
+            Network.insertItem(outputEntry.port, output, inputLane[1], manhattanDistance)
+          else
+            -- Insert from an inserter ready to drop on the input
+            local inserter = inputEntry.inserter
+            Network.insertItem(outputEntry.port, output, inserter.held_stack, manhattanDistance)
+          end
 
           -- Advance to the next input
           lastSupplyIdx, inputEntry = next(inputs, lastSupplyIdx)
@@ -171,8 +191,12 @@ function Network.getPortLane(port, lane)
   return nil
 end
 
--- Inserts an item into the given port and lane's buffer
-function Network.insertItem(port, lane, item, manhattanDistance)
+-- Inserts an item into the given port and lane's buffer and updates the stack's count
+function Network.insertItem(port, lane, itemStack, manhattanDistance)
+  local beltStackSize = 1 + port.entity.force.belt_stack_size_bonus
+  local insertCount = math.min(itemStack.count, beltStackSize)
+  local remainCount = itemStack.count - insertCount
+
   -- Calculate when the item should arrive based on belt speed and distance
   local outputSpeed = prototypes.entity[port.entity.name].belt_speed
 
@@ -180,17 +204,19 @@ function Network.insertItem(port, lane, item, manhattanDistance)
     inventory=InventoryPool.checkout(),
     arriveTick = game.tick + manhattanDistance / outputSpeed,
   }
-  entry.inventory.insert(item)
+  entry.inventory.insert(itemStack)
+  entry.inventory[1].count = insertCount
   table.insert(lane.buffer, entry)
 
-  updateItemCount(port, Util.itemFilterToKey(item), item.count or 1)
+  updateItemCount(port, Util.itemFilterToKey(itemStack), insertCount)
+  itemStack.count = remainCount
 end
 
 -- Removes an item by index from the given port and lane's buffer
 function Network.removeItem(port, lane, bufferIndex)
   local entry = lane.buffer[bufferIndex]
   local itemKey = Util.itemFilterToKey(entry.inventory[1])
-  local itemCount = entry.inventory[1].count or 1
+  local itemCount = entry.inventory[1].count
   InventoryPool.checkin(entry.inventory)
   table.remove(lane.buffer, bufferIndex)
 
@@ -364,7 +390,7 @@ function Network.exportSettings(entity)
   if Util.isGhost(entity) then
     return entity.tags or {}
   else
-  local port = Network.getPort(entity)
+    local port = Network.getPort(entity)
     return createSettings(port.leftLane.item, port.rightLane.item)
   end
 end
