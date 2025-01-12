@@ -1,4 +1,12 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.1.7
+Date: 2025-01-12
+  Changes:
+    - Move port prototype setup to data-final-fixes for compatibility with other mods that tweak belt settings
+  Features:
+    - Add compatibility for Schall Belt Configuration: https://mods.factorio.com/mod/SchallBeltConfiguration
+
+---------------------------------------------------------------------------------------------------
 Version: 0.1.6
 Date: 2025-01-07
   Bugfixes:
