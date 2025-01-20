@@ -1,4 +1,12 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.1.8
+Date: 2025-01-12
+  Bugfixes:
+    - Fix error in on_gui_elem_changed that broke comptibility with Factory Planner
+  Features:
+    - Add compatibility for Extended Range mod: https://mods.factorio.com/mod/RFM-transport
+
+---------------------------------------------------------------------------------------------------
 Version: 0.1.7
 Date: 2025-01-12
   Changes:

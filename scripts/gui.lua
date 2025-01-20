@@ -193,6 +193,8 @@ script.on_event(defines.events.on_gui_closed, GUI.closeOutputPortGui)
 function handleChooseElem(event)
   if not storage.guiData then return end
   local data = storage.guiData[event.player_index]
+  if not data then return end -- Not triggered by our UI
+  
   if event.element == data.chooseLeftButton then
     GUI.updateButtonStates(data)
   elseif event.element == data.chooseRightButton then

@@ -2,6 +2,17 @@ Util = require("scripts/constants")
 
 local TINT = {0.65, 0.65, 0.65} -- to recolor the items and entities
 local SUBGROUP_NAME = 'underground-transport'
+local IGNORED_PROTOTYPES = {
+  -- Compatibility for Extended Range mod: https://mods.factorio.com/mod/RFM-transport
+  ['underground-belt-mr'] = 1,
+  ['fast-underground-belt-mr'] = 1,
+  ['express-underground-belt-mr'] = 1,
+  ['underground-belt-lr'] = 1,
+  ['fast-underground-belt-lr'] = 1,
+  ['express-underground-belt-lr'] = 1,
+  ['turbo-underground-belt-mr'] = 1,
+  ['turbo-underground-belt-lr'] = 1,
+}
 
 function makePort(undergroundPrototype, direction)
   local entity = table.deepcopy(undergroundPrototype)
@@ -83,7 +94,9 @@ local leftClickEvent = {
 data:extend{subgroup, leftClickEvent}
 
 for _, prototype in pairs(data.raw["underground-belt"]) do
-  -- Make the input and output ports
-  makePort(prototype, 'input')
-  makePort(prototype, 'output')
+  if not IGNORED_PROTOTYPES[prototype.name] then
+    -- Make the input and output ports
+    makePort(prototype, 'input')
+    makePort(prototype, 'output')
+  end
 end
