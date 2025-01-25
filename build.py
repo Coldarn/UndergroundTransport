@@ -10,7 +10,7 @@ import itertools
 import subprocess
 
 # define additional patterns for files here that are not in the .gitignore file and should be omitted from the zipped mod
-additionalIgnorePatterns = ['*.py', '.git', '.gitignore', '*.mp4', '.vscode']
+additionalIgnorePatterns = ['*.py', '.git', '.gitignore', '*.mp4', '.vscode', 'art']
 
 # read all git ignore patterns that apply to a given git repo root directory
 def readAllGitIgnorePatterns(dir):
