@@ -1,3 +1,5 @@
+require("scripts/constants")
+
 local Util = {}
 
 ---Returns true if a given string starts with another string.
@@ -80,6 +82,10 @@ end
 
 function Util.positionsEqual(pos1, pos2)
   return pos1 and pos2 and pos1.x == pos2.x and pos1.y == pos2.y
+end
+
+function Util.getAnimEntityName(portEntity)
+  return portEntity.name..OVERLAY_SUFFIX
 end
 
 return Util

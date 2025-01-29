@@ -1,6 +1,6 @@
-require("scripts/constants")
 Util = require("scripts/util")
 InventoryPool = require("scripts/inventory_pool")
+AnimationTracker = require("scripts/animation_tracker")
 Network = require("scripts/network")
 GUI = require("scripts/gui")
 UndoTracker = require("scripts/undo_tracker")

@@ -22,6 +22,9 @@ local Network = {
   --      lastIndex=#,
   --    },
   --   },
+  --   animationEntities = {
+  --     [portEntityUnitNumber] = [animationEntity],
+  --   },
   -- }
 }
 
@@ -337,6 +340,7 @@ function Network.addPort(entity, priorEntity)
   if priorIsGhost and priorEntity.tags then
     Network.importSettings(entity, priorEntity.tags)
   end
+  AnimationTracker.setup(entity)
 
   log("Added: "..entity.name..", "..entity.surface.name)
 end
@@ -387,6 +391,7 @@ function Network.removePort(entity, spillInventory)
   end
   spill(port.leftLane)
   spill(port.rightLane)
+  AnimationTracker.teardown(entity)
   log("Removed: "..entity.name..", "..entity.surface.name)
 end
 

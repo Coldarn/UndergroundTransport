@@ -1,4 +1,4 @@
-Util = require("scripts/constants")
+Util = require("scripts/util")
 
 local TINT = {0.65, 0.65, 0.65} -- to recolor the items and entities
 local SUBGROUP_NAME = 'underground-transport'
@@ -13,19 +13,27 @@ local IGNORED_PROTOTYPES = {
   ['turbo-underground-belt-mr'] = 1,
   ['turbo-underground-belt-lr'] = 1,
 }
+local EMPTY_SPRITE4WAY = {
+  sheet = {
+    filename = "__core__/graphics/empty.png",
+    size = {1, 1},
+  }
+}
+local FRAME_COUNT = 14
+local FRAME_SCALE = 0.5
 
 function makePort(undergroundPrototype, direction)
   local entity = table.deepcopy(undergroundPrototype)
-  entity.type = TYPE
+  entity.type = BASE_TYPE
   entity.name = NAME_PREFIX..direction.."-"..undergroundPrototype.name
   entity.minable.result = entity.name
-  entity.fast_replaceable_group = TYPE
+  entity.fast_replaceable_group = BASE_TYPE
   if undergroundPrototype.next_upgrade then
     entity.next_upgrade = NAME_PREFIX..direction.."-"..undergroundPrototype.next_upgrade
   end
   entity.localised_name = {"entity-name."..entity.name}
-  for _, sprite_4_way in pairs(entity.structure) do -- should maybe be a bit more general to deal with differently defined sprites
-    sprite_4_way.sheet.tint = TINT
+  for key in pairs(entity.structure) do -- should maybe be a bit more general to deal with differently defined sprites
+    entity.structure[key] = EMPTY_SPRITE4WAY
   end
   -- need to tint entity icon for upgrade planners:
   if undergroundPrototype.icons then
@@ -38,6 +46,44 @@ function makePort(undergroundPrototype, direction)
   else
     entity.icons = {{icon=undergroundPrototype.icon, tint=TINT}}
   end
+
+  -- Provides the visible animation and power draw as underground belts support neither
+  local anim = {
+    filename = "__UndergroundTransport__/graphics/normal/"..direction..".png",
+    frame_count = FRAME_COUNT,
+    size = {64, 82},
+    line_length = 4,
+    lines_per_file = 3,
+    scale = FRAME_SCALE,
+    animation_speed = 0.4,
+    shift = {-0.5, -0.62},
+    -- shift = util.mul_shift(util.by_pixel(-50, -64), FRAME_SCALE),
+  }
+  local overlayEntity = {
+    type = OVERLAY_TYPE,
+    name = Util.getAnimEntityName(entity),
+    localised_name = {"entity-name."..entity.name},
+    hidden = true,
+    hidden_in_factoriopedia = true,
+    selectable_in_game = false,
+    -- TODO: Add icons for the electric network info charts
+    -- TODO: Scale energy usage by belt tier
+    energy_usage = "50kW",
+    energy_source = {
+      type = "electric",
+      buffer_capacity = "1MJ",
+      usage_priority = "secondary-input",
+      input_flow_limit = "50kW",
+      output_flow_limit = "0W"
+    },
+    animations = {
+      north = anim,
+      east = anim,
+      south = anim,
+      west = anim,
+    },
+    continuous_animation = true,
+  }
 
   local item = {
     type = "item-with-tags",
@@ -61,11 +107,11 @@ function makePort(undergroundPrototype, direction)
     type = "recipe",
     name = entity.name,
     enabled = false, -- is_enabled_at_game_start is a more descriptive name
-    ingredients = {{type="item", name=undergroundPrototype.name, amount=5}},
+    ingredients = {{type="item", name=undergroundPrototype.name, amount=4}},
     results     = {{type="item", name=entity.name, amount=1}}
   }
 
-  data:extend{entity, item, recipe}
+  data:extend{entity, overlayEntity, item, recipe}
 
   -- Add recipe unlock to the correct technology:
   for _, technology in pairs(data.raw["technology"]) do

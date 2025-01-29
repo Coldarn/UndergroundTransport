@@ -2,7 +2,7 @@ local UndoTracker = {
   recentRemovals = {}, -- array of recently-removed ports
 }
 
-UNDO_RECORD_SEEN_TAG = 'ut-undo-seen'
+local UNDO_RECORD_SEEN_TAG = 'ut-undo-seen'
 
 function UndoTracker.tick()
   -- Detect each time a player's undo stack changes so we can apply undo data
