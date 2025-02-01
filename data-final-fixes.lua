@@ -49,15 +49,32 @@ function makePort(undergroundPrototype, direction)
 
   -- Provides the visible animation and power draw as underground belts support neither
   local anim = {
-    filename = "__UndergroundTransport__/graphics/normal/"..direction..".png",
-    frame_count = FRAME_COUNT,
-    size = {64, 82},
-    line_length = 4,
-    lines_per_file = 3,
-    scale = FRAME_SCALE,
-    animation_speed = 0.4,
-    shift = {-0.5, -0.62},
-    -- shift = util.mul_shift(util.by_pixel(-50, -64), FRAME_SCALE),
+    layers = {
+      {
+        filename = "__UndergroundTransport__/graphics/normal/"..direction..".png",
+        frame_count = FRAME_COUNT,
+        size = {70, 84},
+        line_length = 7,
+        lines_per_file = 2,
+        scale = FRAME_SCALE,
+        animation_speed = 0.4, -- 24 FPS
+        shift = {-0.5, -0.62},
+        priority = 'extra-high',
+        -- shift = util.mul_shift(util.by_pixel(-50, -64), FRAME_SCALE),
+      },
+      {
+        filename = "__UndergroundTransport__/graphics/normal/"..direction.."-shadow.png",
+        frame_count = FRAME_COUNT,
+        size = {75, 64},
+        line_length = 7,
+        lines_per_file = 2,
+        scale = 0.75,
+        animation_speed = 0.4, -- 24 FPS
+        shift = {-0.4, -0.5},
+        draw_as_shadow = true,
+        priority = 'extra-high',
+      },
+    }
   }
   local overlayEntity = {
     type = OVERLAY_TYPE,

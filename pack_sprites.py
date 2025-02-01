@@ -32,4 +32,4 @@ files.sort()
 geometry = str(subprocess.check_output(['magick', 'identify', '-format', '%[fx:w]x%[fx:h]', files[0]]), 'utf-8')
 print(f'Dimensions: {geometry}')
 
-subprocess.check_output(['magick', 'montage', '-background', '#00000000', '-tile', '4', '-geometry', geometry, '-border', '0', *files, outputPath])
+subprocess.check_output(['magick', 'montage', '-background', '#00000000', '-tile', '7', '-geometry', geometry, '-border', '0', *files, outputPath])
