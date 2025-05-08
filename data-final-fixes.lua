@@ -22,6 +22,14 @@ local EMPTY_SPRITE4WAY = {
 local FRAME_COUNT = 14
 local FRAME_SCALE = 0.5
 
+-- Map from belt name to belt type
+local BELT_TYPE_MAP = {
+  ["underground-belt"] = "normal",
+  ["fast-underground-belt"] = "fast",
+  ["express-underground-belt"] = "express", 
+  ["turbo-underground-belt"] = "turbo"
+}
+
 function makePort(undergroundPrototype, direction)
   local entity = table.deepcopy(undergroundPrototype)
   entity.type = BASE_TYPE
@@ -36,46 +44,89 @@ function makePort(undergroundPrototype, direction)
     entity.structure[key] = EMPTY_SPRITE4WAY
   end
   -- need to tint entity icon for upgrade planners:
-  if undergroundPrototype.icons then
-    for _, icon in pairs(entity.icons) do
-      icon.tint = TINT
-      if direction == 'output' then
-        icon.scale = -1
-      end
-    end
-  else
-    entity.icons = {{icon=undergroundPrototype.icon, tint=TINT}}
-  end
+  local icon = {
+    { icon="__UndergroundTransport__/graphics/"..direction.."-"..undergroundPrototype.name..".png", icon_size=64, icon_mipmaps=4 }
+  }
+  entity.icons = icon
 
-  -- Provides the visible animation and power draw as underground belts support neither
+  local belt_type = BELT_TYPE_MAP[undergroundPrototype.name] or "normal"
   local anim = {
     layers = {
       {
-        filename = "__UndergroundTransport__/graphics/normal/"..direction..".png",
+        filename = "__UndergroundTransport__/graphics/"..belt_type.."/north/"..direction..".png",
         frame_count = FRAME_COUNT,
         size = {70, 84},
         line_length = 7,
         lines_per_file = 2,
         scale = FRAME_SCALE,
-        animation_speed = 0.4, -- 24 FPS
-        shift = {-0.5, -0.62},
-        priority = 'extra-high',
-        -- shift = util.mul_shift(util.by_pixel(-50, -64), FRAME_SCALE),
-      },
-      {
-        filename = "__UndergroundTransport__/graphics/normal/"..direction.."-shadow.png",
-        frame_count = FRAME_COUNT,
-        size = {75, 64},
-        line_length = 7,
-        lines_per_file = 2,
-        scale = 0.75,
-        animation_speed = 0.4, -- 24 FPS
-        shift = {-0.4, -0.5},
-        draw_as_shadow = true,
+        animation_speed = 0.4,
+        shift = {-0.5, -0.5},
         priority = 'extra-high',
       },
+      -- TODO: Add shadow sprites
+      -- {
+      --   filename = "__UndergroundTransport__/graphics/"..belt_type.."/north/"..direction.."-shadow.png",
+      --   frame_count = FRAME_COUNT,
+      --   size = {75, 64},
+      --   line_length = 7,
+      --   lines_per_file = 2,
+      --   scale = 0.75,
+      --   animation_speed = 0.4,
+      --   shift = {-0.4, -0.5},
+      --   draw_as_shadow = true,
+      --   priority = 'extra-high',
+      -- },
     }
   }
+
+  -- Create direction-specific animations
+  local northAnim = table.deepcopy(anim)
+  northAnim.layers[1].filename = "__UndergroundTransport__/graphics/"..belt_type.."/north/"..direction..".png"
+  northAnim.layers[1].size = {84, 70}
+  local eastAnim = table.deepcopy(anim)
+  eastAnim.layers[1].filename = "__UndergroundTransport__/graphics/"..belt_type.."/east/"..direction..".png"
+  eastAnim.layers[1].size = {70, 84}
+  local southAnim = table.deepcopy(anim)
+  southAnim.layers[1].filename = "__UndergroundTransport__/graphics/"..belt_type.."/south/"..direction..".png"
+  southAnim.layers[1].size = {84, 70}
+  local westAnim = table.deepcopy(anim)
+  westAnim.layers[1].filename = "__UndergroundTransport__/graphics/"..belt_type.."/west/"..direction..".png"
+  westAnim.layers[1].size = {70, 84}
+
+  local sprite = {
+    filename = "__UndergroundTransport__/graphics/"..belt_type.."/north/"..direction..".png",
+    frame_count = FRAME_COUNT,
+    size = {70, 84},
+    line_length = 7,
+    lines_per_file = 2,
+    scale = FRAME_SCALE,
+  }
+  local northSprite = table.deepcopy(sprite)
+  northSprite.filename = "__UndergroundTransport__/graphics/"..belt_type.."/north/"..direction..".png"
+  northSprite.size = {84, 70}
+  local eastSprite = table.deepcopy(sprite)
+  eastSprite.filename = "__UndergroundTransport__/graphics/"..belt_type.."/east/"..direction..".png"
+  eastSprite.size = {70, 84}
+  local southSprite = table.deepcopy(sprite)
+  southSprite.filename = "__UndergroundTransport__/graphics/"..belt_type.."/south/"..direction..".png"
+  southSprite.size = {84, 70}
+  local westSprite = table.deepcopy(sprite)
+  westSprite.filename = "__UndergroundTransport__/graphics/"..belt_type.."/west/"..direction..".png"
+  westSprite.size = {70, 84}
+
+  entity.structure.direction_in = {
+    north = direction == 'input' and northSprite or southSprite,
+    east = direction == 'input' and eastSprite or westSprite,
+    south = direction == 'input' and southSprite or northSprite,
+    west = direction == 'input' and westSprite or eastSprite,
+  }
+  entity.structure.direction_out = {
+    north = direction == 'output' and northSprite or southSprite,
+    east = direction == 'output' and eastSprite or westSprite,
+    south = direction == 'output' and southSprite or northSprite,
+    west = direction == 'output' and westSprite or eastSprite,
+  }
+
   local overlayEntity = {
     type = OVERLAY_TYPE,
     name = Util.getAnimEntityName(entity),
@@ -94,10 +145,10 @@ function makePort(undergroundPrototype, direction)
       output_flow_limit = "0W"
     },
     animations = {
-      north = anim,
-      east = anim,
-      south = anim,
-      west = anim,
+      north = northAnim,
+      east = eastAnim,
+      south = southAnim,
+      west = westAnim,
     },
     continuous_animation = true,
   }
@@ -108,9 +159,7 @@ function makePort(undergroundPrototype, direction)
     icon_size = 64,
     icon_mipmaps = 4,
     linked_belt_type = direction,
-    icons = {
-      { icon="__UndergroundTransport__/graphics/"..direction.."-"..undergroundPrototype.name..".png", icon_size=64, icon_mipmaps=4 }
-    },
+    icons = icon,
     subgroup = SUBGROUP_NAME,
     order = data.raw["item"][undergroundPrototype.name].order,
     place_result = entity.name,

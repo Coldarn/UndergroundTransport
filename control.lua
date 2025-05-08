@@ -5,6 +5,14 @@ Network = require("scripts/network")
 GUI = require("scripts/gui")
 UndoTracker = require("scripts/undo_tracker")
 
+-- Event filter for entity events
+EVENT_TYPE_FILTER = {
+  {filter = "type", type = "linked-belt"},
+  {filter = "type", type = "entity-ghost"},
+}
+
+-- Left click event name
+LEFT_CLICK_EVENT = 'ut-left-click'
 
 script.on_init(Network.init)
 script.on_event(defines.events.on_tick, function ()
@@ -15,7 +23,7 @@ end)
 
 local UPGRADE_PORT_DATA = nil
 
----Handles cration of a port
+---Handles creation of a port
 ---@param event EventData.on_built_entity|EventData.on_robot_built_entity|EventData.on_entity_cloned|EventData.script_raised_built|EventData.script_raised_revive
 function handleEntityCreated(event)
   local upgradeEntity = UPGRADE_PORT_DATA
@@ -83,6 +91,7 @@ function handleEntityRemoved(event)
     end
     Network.removePort(entity, event.buffer)
   end
+  AnimationTracker.teardown(entity)
   GUI.checkClose(entity)
 end
 script.on_event(defines.events.on_entity_died, handleEntityRemoved, EVENT_TYPE_FILTER)
@@ -153,7 +162,6 @@ script.on_event(LEFT_CLICK_EVENT, handleLeftClick)
 -- end
 -- script.on_event(defines.events.on_selected_entity_changed , handleEntitySelected)
 
-
 -- function handleCursorChanged(event)
 --   local player = game.get_player(event.player_index)
 --   local item = player.cursor_stack
@@ -161,10 +169,23 @@ script.on_event(LEFT_CLICK_EVENT, handleLeftClick)
 --   if not Util.isPort(item) then return end
   
 --   -- TODO: Show correct entity ghost for output ports
---   -- if Util.isInput(item) then
---   --   player.cursor_ghost = 
---   -- end
+--   if Util.isOutput(item) then
+--     -- player.cursor_stack.direc
+--   end
 --   -- log(serpent.line(item))
 --   -- item.linked_belt_type = Util.isInput(item) and 'input' or 'output'
 -- end
 -- script.on_event(defines.events.on_player_cursor_stack_changed, handleCursorChanged)
+
+-- Handle rotation of port entities
+function handleEntityRotated(event)
+  local entity = event.entity
+  if not Util.isPort(entity) then return end
+  
+  local network = Network.get(entity.surface.name)
+  local animEntity = network.animationEntities[entity.unit_number]
+  if animEntity and animEntity.valid then
+    animEntity.direction = entity.direction
+  end
+end
+script.on_event(defines.events.on_player_rotated_entity, handleEntityRotated)

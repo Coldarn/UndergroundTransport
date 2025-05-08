@@ -66,6 +66,12 @@ function Util.isInput(entity)
     or (Util.isGhost(entity) and Util.startsWith(entity.ghost_name, "ut-input-"))
 end
 
+-- Returns true if the given underground transport entity is an output.
+function Util.isOutput(entity)
+  return Util.startsWith(entity.name, "ut-output-")
+    or (Util.isGhost(entity) and Util.startsWith(entity.ghost_name, "ut-output-"))
+end
+
 function Util.itemFilterToKey(filter)
   return filter.name.."/"..(filter.quality.name and filter.quality.name or filter.quality)
 end

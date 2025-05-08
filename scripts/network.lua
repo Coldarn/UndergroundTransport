@@ -72,6 +72,9 @@ function Network.tick()
       -- Check for items ready on each input port lane
       local canDrop = false
       for idx = 1, 2 do
+        if not entity or not entity.valid then
+          goto laneLoop
+        end
         local lane = entity.get_transport_line(idx)
         
         -- If there's room to insert an item at the end of the lane, it's not full yet
