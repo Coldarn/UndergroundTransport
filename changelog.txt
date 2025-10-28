@@ -1,4 +1,12 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.1.10
+Date: 2025-10-28
+  Bugfixes:
+    - Fix crash when loading with other mods that alter underground belts, such as the "Entangled Belts" mod
+  Changes:
+    - This release should be MUCH more compatible with other belt-altering mods as it no longer tries to build underground transport versions of each underground belt prototype it finds during startup. Only the four base belt types will now have underground transport variants added.
+
+---------------------------------------------------------------------------------------------------
 Version: 0.1.9
 Date: 2025-10-28
   Bugfixes:
