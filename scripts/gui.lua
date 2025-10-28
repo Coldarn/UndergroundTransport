@@ -11,7 +11,7 @@ function GUI.openOutputPortGui(player, entity)
   }
   window.style.size = {400, 260}
   window.auto_center = true
-  local data = {
+  local guiData = {
     player = player,
     entity = entity,
     port = Network.getPort(entity),
@@ -28,7 +28,7 @@ function GUI.openOutputPortGui(player, entity)
   if not storage.guiData then
     storage.guiData = {}
   end
-  storage.guiData[player.index] = data
+  storage.guiData[player.index] = guiData
 
   local titlebar = window.add{ type="flow"}
   titlebar.drag_target = window
@@ -42,7 +42,7 @@ function GUI.openOutputPortGui(player, entity)
   filler.style.height = 26
   filler.style.horizontally_stretchable = true
   filler.style.margin = {0, 6, 0, 4}
-  data.closeButton = titlebar.add{
+  guiData.closeButton = titlebar.add{
     type = "sprite-button",
     style = "close_button",
     sprite = "utility/close",
@@ -69,24 +69,24 @@ function GUI.openOutputPortGui(player, entity)
   buttonContainer.style.column_alignments[1] = 'right'
 
   buttonContainer.add{ type="label", caption={'ui.ut-left-lane'}, style="semibold_label" }
-  data.chooseLeftButton = buttonContainer.add{ type="choose-elem-button", elem_type='item-with-quality' }
-  data.chooseLeftButton.elem_value = data.port.leftLane.item
-  data.bothButtonLeft = buttonContainer.add{ type="button", caption={'ui.ut-both-lanes'} }
+  guiData.chooseLeftButton = buttonContainer.add{ type="choose-elem-button", elem_type='item-with-quality' }
+  guiData.chooseLeftButton.elem_value = guiData.port.leftLane.item
+  guiData.bothButtonLeft = buttonContainer.add{ type="button", caption={'ui.ut-both-lanes'} }
 
   buttonContainer.add{ type="label", caption={'ui.ut-right-lane'}, style="semibold_label" }
-  data.chooseRightButton = buttonContainer.add{ type="choose-elem-button", elem_type='item-with-quality' }
-  data.chooseRightButton.elem_value = data.port.rightLane.item
-  data.bothButtonRight = buttonContainer.add{ type="button", caption={'ui.ut-both-lanes'} }
+  guiData.chooseRightButton = buttonContainer.add{ type="choose-elem-button", elem_type='item-with-quality' }
+  guiData.chooseRightButton.elem_value = guiData.port.rightLane.item
+  guiData.bothButtonRight = buttonContainer.add{ type="button", caption={'ui.ut-both-lanes'} }
 
   bodyFrame.add{ type="label", caption={'ui.ut-inventory-header'} }
-  data.inventoryPane = bodyFrame.add{ type="table", column_count=9, column_widths={minimal=40}, wide_as_column_count=true }
-  data.inventoryPane.style.height = 40
-  data.inventoryPane.style.horizontal_spacing = 0
-  data.inventoryPane.style.vertical_spacing = 0
+  guiData.inventoryPane = bodyFrame.add{ type="table", column_count=9, column_widths={minimal=40}, wide_as_column_count=true }
+  guiData.inventoryPane.style.height = 40
+  guiData.inventoryPane.style.horizontal_spacing = 0
+  guiData.inventoryPane.style.vertical_spacing = 0
 
-  GUI.updateButtonStates(data)
+  GUI.updateButtonStates(guiData)
   GUI.updateInventory()
-  data.dirty = false
+  guiData.dirty = false
   player.opened = window
 end
 

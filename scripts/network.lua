@@ -72,7 +72,7 @@ function Network.tick()
       -- Check for items ready on each input port lane
       local canDrop = false
       for idx = 1, 2 do
-        local lane = entity.get_transport_line(idx)
+        local lane = entity.get_transport_line(idx) -- TODO: Figure out why entity goes invalid when deploying space stations
         
         -- If there's room to insert an item at the end of the lane, it's not full yet
         if lane.can_insert_at(lane.line_length - 0.25) then

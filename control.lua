@@ -120,13 +120,17 @@ script.on_event(defines.events.on_player_setup_blueprint, handleBlueprintSetup)
 function handleLeftClick(event)
   local player = game.get_player(event.player_index)
   if not player then return end
-  GUI.closeOutputPortGui(event)
+  if not event.in_gui then
+    -- Close the output window when clicking outside
+    GUI.closeOutputPortGui(event)
+  end
 
   local entity = player.selected
   if not entity or not Util.isPort(entity) or Util.isInput(entity) then return end
 
-  -- TODO: Don't open on clicking for copy/paste!
-  -- check if copy/paste tool is active?
+  -- Don't open the GUI when clicking on a port with a tool such as copy or blueprint
+  if not player.is_cursor_empty() then return end
+
   GUI.openOutputPortGui(player, entity)
 end
 script.on_event(LEFT_CLICK_EVENT, handleLeftClick)
