@@ -16,3 +16,7 @@ https://github.com/user-attachments/assets/508e59a2-3877-4732-af01-f931bd843ac3
 ## Notes
 1. Each surface has its own distinct network - items do not route between surfaces
 1. Items have realistic travel times for balance
+
+## Work items
+1. Item stacks are flattened when loaded into an underground network, but they should be preserved
+1. Updated graphics for all rotations and belt speed options

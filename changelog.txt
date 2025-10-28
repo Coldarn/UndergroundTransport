@@ -1,4 +1,11 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.1.9
+Date: 2025-10-28
+  Bugfixes:
+    - Fix bug causing the port configuration window to close when clicking on a choose item button
+    - Fix bug causing the port configuration window to open when clicking with a tool such as copy or blueprint
+
+---------------------------------------------------------------------------------------------------
 Version: 0.1.8
 Date: 2025-01-12
   Bugfixes:
